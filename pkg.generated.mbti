@@ -2,11 +2,50 @@
 package "zxw-dev/moonmend"
 
 // Values
+pub fn parse_interface(String) -> Result[InterfaceSnapshot, String]
+
 pub fn product_name() -> String
 
 // Errors
 
 // Types and methods
+pub(all) enum ApiDeclaration {
+  Function(ApiFunction)
+  Struct(ApiStruct)
+}
+pub fn ApiDeclaration::to_json(Self) -> Json
+
+pub(all) struct ApiField {
+  name : String
+  type_name : String
+}
+pub fn ApiField::to_json(Self) -> Json
+
+pub(all) struct ApiFunction {
+  name : String
+  parameters : Array[ApiParameter]
+  return_type : String
+}
+pub fn ApiFunction::to_json(Self) -> Json
+
+pub(all) struct ApiParameter {
+  name : String?
+  type_name : String
+}
+pub fn ApiParameter::to_json(Self) -> Json
+
+pub(all) struct ApiStruct {
+  name : String
+  fields : Array[ApiField]
+}
+pub fn ApiStruct::to_json(Self) -> Json
+
+pub(all) struct InterfaceSnapshot {
+  package_name : String
+  declarations : Array[ApiDeclaration]
+}
+pub fn InterfaceSnapshot::to_json(Self) -> Json
+pub fn InterfaceSnapshot::to_json_string(Self) -> String
 
 // Type aliases
 

@@ -20,6 +20,29 @@ executable CLI package, and tests.
 - Produce reviewable diffs for high-confidence migrations.
 - Validate applied migrations with `moon check` and `moon test`.
 
+## Interface Parser
+
+The first parser iteration handles generated interfaces containing:
+
+- package declarations
+- public functions and parameters
+- public structs and fields
+- nested generic types
+
+It produces a normalized `InterfaceSnapshot` with deterministic JSON output.
+Unsupported public declarations fail explicitly instead of being silently
+ignored.
+
+```moonbit
+let snapshot = parse_interface(source)
+match snapshot {
+  Ok(snapshot) => println(snapshot.to_json_string())
+  Err(message) => println("parse error: " + message)
+}
+```
+
+Example inputs are available under `fixtures/v1` and `fixtures/v2`.
+
 ## Development
 
 Requirements:

@@ -1,0 +1,12 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "zxw-dev/example"
+
+// Values
+pub fn add(a : Int, b : Int) -> Int
+pub fn find_user(id : Int) -> User?
+
+// Types and methods
+pub struct User {
+  name : String
+  age : Int
+}
