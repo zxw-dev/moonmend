@@ -24,3 +24,7 @@ keywords = [ "moonbit", "developer-tools", "api-migration", "semver" ]
 preferred_target = "wasm"
 
 description = "MoonBit API migration and safe upgrade assistant"
+
+import {
+  "moonbitlang/x@0.5.5",
+}

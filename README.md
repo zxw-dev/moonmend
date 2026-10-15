@@ -58,6 +58,11 @@ Renames are reported only when the API shape is identical and the name
 similarity is high enough; ambiguous candidates remain separate removals and
 additions.
 
+## Dependencies
+
+- [`moonbitlang/x`](https://github.com/moonbitlang/x), Apache-2.0, used for
+  cross-platform file input and output.
+
 ## Development
 
 Requirements:
@@ -68,7 +73,19 @@ Requirements:
 Run the executable:
 
 ```powershell
-moon run cmd/main
+moon run cmd/main -- diff fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti
+```
+
+Output JSON instead:
+
+```powershell
+moon run cmd/main -- diff fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --format json
+```
+
+Write the report to a file:
+
+```powershell
+moon run cmd/main -- diff fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --output report.md
 ```
 
 Run tests:
