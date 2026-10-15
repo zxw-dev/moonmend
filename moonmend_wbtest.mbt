@@ -96,3 +96,79 @@ test "reject unterminated struct" {
     #|  name : String
   assert_true(parse_interface(source) is Err(_))
 }
+
+///|
+test "diff snapshots classify additions removals modifications and renames" {
+  let old_source =
+    #|package "zxw-dev/example"
+    #|pub fn add(a : Int, b : Int) -> Int
+    #|pub fn get_user(id : Int, active : Bool) -> User?
+    #|pub fn legacy_lookup(id : Int) -> User?
+    #|pub struct User {
+    #|  name : String
+    #|  age : Int
+    #|}
+  let new_source =
+    #|package "zxw-dev/example"
+    #|pub fn add(a : Int, b : Int) -> String
+    #|pub fn fetch_user(id : Int, active : Bool) -> User?
+    #|pub fn delete_user(id : Int) -> Unit
+    #|pub struct User {
+    #|  name : String
+    #|  age : UInt
+    #|}
+  let old = parse_interface(old_source)
+  let new = parse_interface(new_source)
+  guard old is Ok(old_snapshot) else { fail("old snapshot is invalid") }
+  guard new is Ok(new_snapshot) else { fail("new snapshot is invalid") }
+  let diff = diff_interfaces(old_snapshot, new_snapshot)
+  assert_eq(diff.changes.length(), 5)
+  let kinds = diff.changes.map(change => change.kind()).join(",")
+  assert_eq(
+    kinds, "function_modified,function_renamed,function_removed,function_added,struct_modified",
+  )
+  assert_true(diff.to_json_string().contains("\"function_renamed\""))
+  assert_true(diff.to_markdown().contains("Renamed function `get_user`"))
+}
+
+///|
+test "diff snapshots are deterministic when there are no changes" {
+  let source =
+    #|package "zxw-dev/example"
+    #|pub fn ping() -> Unit
+  let snapshot = match parse_interface(source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let diff = diff_interfaces(snapshot, snapshot)
+  assert_true(diff.changes.is_empty())
+  assert_eq(
+    diff.to_markdown(),
+    "# MoonMend Interface Diff\n\n" +
+    "- Old package: `zxw-dev/example`\n" +
+    "- New package: `zxw-dev/example`\n" +
+    "- Changes: 0\n\n" +
+    "No public API changes detected.",
+  )
+}
+
+///|
+test "ambiguous rename candidates remain added and removed" {
+  let old_source =
+    #|package "zxw-dev/example"
+    #|pub fn alpha() -> Unit
+  let new_source =
+    #|package "zxw-dev/example"
+    #|pub fn omega() -> Unit
+  let old = match parse_interface(old_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let new = match parse_interface(new_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let diff = diff_interfaces(old, new)
+  let kinds = diff.changes.map(change => change.kind()).join(",")
+  assert_eq(kinds, "function_removed,function_added")
+}

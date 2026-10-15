@@ -43,6 +43,21 @@ match snapshot {
 
 Example inputs are available under `fixtures/v1` and `fixtures/v2`.
 
+## Interface Diff
+
+`diff_interfaces` compares two snapshots and produces a deterministic list of
+added, removed, modified, and renamed functions or structs.
+
+```moonbit
+let diff = diff_interfaces(old_snapshot, new_snapshot)
+println(diff.to_json_string())
+println(diff.to_markdown())
+```
+
+Renames are reported only when the API shape is identical and the name
+similarity is high enough; ambiguous candidates remain separate removals and
+additions.
+
 ## Development
 
 Requirements:

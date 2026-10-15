@@ -3,6 +3,8 @@ package "zxw-dev/example"
 
 // Values
 pub fn add(a : Int, b : Int) -> Int
+pub fn get_user(id : Int, active : Bool) -> User?
+pub fn legacy_lookup(id : Int) -> User?
 
 // Types and methods
 pub struct User {

@@ -2,11 +2,12 @@
 package "zxw-dev/example"
 
 // Values
-pub fn add(a : Int, b : Int) -> Int
-pub fn find_user(id : Int) -> User?
+pub fn add(a : Int, b : Int) -> String
+pub fn fetch_user(id : Int, active : Bool) -> User?
+pub fn delete_user(id : Int) -> Unit
 
 // Types and methods
 pub struct User {
   name : String
-  age : Int
+  age : UInt
 }

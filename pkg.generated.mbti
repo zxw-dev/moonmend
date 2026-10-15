@@ -2,6 +2,8 @@
 package "zxw-dev/moonmend"
 
 // Values
+pub fn diff_interfaces(InterfaceSnapshot, InterfaceSnapshot) -> InterfaceDiff
+
 pub fn parse_interface(String) -> Result[InterfaceSnapshot, String]
 
 pub fn product_name() -> String
@@ -26,6 +28,7 @@ pub(all) struct ApiFunction {
   parameters : Array[ApiParameter]
   return_type : String
 }
+pub fn ApiFunction::signature_string(Self) -> String
 pub fn ApiFunction::to_json(Self) -> Json
 
 pub(all) struct ApiParameter {
@@ -38,7 +41,31 @@ pub(all) struct ApiStruct {
   name : String
   fields : Array[ApiField]
 }
+pub fn ApiStruct::summary_string(Self) -> String
 pub fn ApiStruct::to_json(Self) -> Json
+
+pub(all) enum DiffChange {
+  FunctionAdded(ApiFunction)
+  FunctionRemoved(ApiFunction)
+  FunctionModified(ApiFunction, ApiFunction)
+  FunctionRenamed(String, ApiFunction)
+  StructAdded(ApiStruct)
+  StructRemoved(ApiStruct)
+  StructModified(ApiStruct, ApiStruct)
+  StructRenamed(String, ApiStruct)
+}
+pub fn DiffChange::kind(Self) -> String
+pub fn DiffChange::to_json(Self) -> Json
+pub fn DiffChange::to_markdown(Self) -> String
+
+pub(all) struct InterfaceDiff {
+  old_package : String
+  new_package : String
+  changes : Array[DiffChange]
+}
+pub fn InterfaceDiff::to_json(Self) -> Json
+pub fn InterfaceDiff::to_json_string(Self) -> String
+pub fn InterfaceDiff::to_markdown(Self) -> String
 
 pub(all) struct InterfaceSnapshot {
   package_name : String
