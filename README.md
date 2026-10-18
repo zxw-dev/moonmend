@@ -62,6 +62,8 @@ additions.
 
 - [`moonbitlang/x`](https://github.com/moonbitlang/x), Apache-2.0, used for
   cross-platform file input and output.
+- [`moonbitlang/async`](https://github.com/moonbitlang/async), Apache-2.0, used
+  to run `moon check` and `moon test` during migration verification.
 
 ## Development
 
@@ -100,6 +102,16 @@ Generate plan JSON or a unified diff preview:
 moon run cmd/main -- plan fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --format json
 moon run cmd/main -- plan fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --format diff
 ```
+
+Preview and apply automatic source migrations:
+
+```powershell
+moon run cmd/main -- migrate fixtures/demo-project fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti
+moon run cmd/main -- migrate fixtures/demo-project fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --apply
+```
+
+`--apply` runs `moon check` and `moon test` in the target project. If either
+command fails, MoonMend restores all modified files.
 
 Run tests:
 

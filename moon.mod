@@ -21,10 +21,11 @@ license = "Apache-2.0"
 
 keywords = [ "moonbit", "developer-tools", "api-migration", "semver" ]
 
-preferred_target = "wasm"
+preferred_target = "native"
 
 description = "MoonBit API migration and safe upgrade assistant"
 
 import {
   "moonbitlang/x@0.5.5",
+  "moonbitlang/async@0.22.5",
 }

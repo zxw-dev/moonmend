@@ -8,7 +8,11 @@ pub fn parse_interface(String) -> Result[InterfaceSnapshot, String]
 
 pub fn plan_migration(InterfaceDiff) -> MigrationPlan
 
+pub fn preview_source_migration(Array[SourceFile], MigrationPlan) -> MigrationPreview
+
 pub fn product_name() -> String
+
+pub fn replace_identifiers(String, Array[MigrationAction]) -> String
 
 // Errors
 
@@ -60,6 +64,12 @@ pub fn DiffChange::kind(Self) -> String
 pub fn DiffChange::to_json(Self) -> Json
 pub fn DiffChange::to_markdown(Self) -> String
 
+pub(all) struct FileMigration {
+  path : String
+  before : String
+  after : String
+}
+
 pub(all) struct InterfaceDiff {
   old_package : String
   new_package : String
@@ -96,12 +106,23 @@ pub fn MigrationPlan::to_json_string(Self) -> String
 pub fn MigrationPlan::to_markdown(Self) -> String
 pub fn MigrationPlan::to_unified_diff(Self) -> String
 
+pub(all) struct MigrationPreview {
+  files : Array[FileMigration]
+}
+pub fn MigrationPreview::is_empty(Self) -> Bool
+pub fn MigrationPreview::to_unified_diff(Self) -> String
+
 pub(all) enum MigrationStrategy {
   Automatic
   Manual
   Informational
 }
 pub fn MigrationStrategy::name(Self) -> String
+
+pub(all) struct SourceFile {
+  path : String
+  content : String
+}
 
 // Type aliases
 

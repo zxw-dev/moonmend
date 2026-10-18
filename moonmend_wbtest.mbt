@@ -223,3 +223,61 @@ test "migration plan reports no automatic changes" {
   let plan = plan_migration(diff_interfaces(old, new))
   assert_eq(plan.to_unified_diff(), "# No automatic changes to preview.")
 }
+
+///|
+test "source migration replaces identifiers outside comments and strings" {
+  let old_source =
+    #|package "zxw-dev/example"
+    #|pub fn get_user(id : Int) -> User?
+  let new_source =
+    #|package "zxw-dev/example"
+    #|pub fn fetch_user(id : Int) -> User?
+  let old = match parse_interface(old_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let new = match parse_interface(new_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let plan = plan_migration(diff_interfaces(old, new))
+  let source =
+    #|let user = get_user(1)
+    #|let text = "get_user"
+    #|// get_user should remain in comments
+    #|let other = get_user_extra(2)
+  let actual = replace_identifiers(source, plan.actions)
+  let expected =
+    #|let user = fetch_user(1)
+    #|let text = "get_user"
+    #|// get_user should remain in comments
+    #|let other = get_user_extra(2)
+  assert_eq(actual, expected)
+}
+
+///|
+test "source migration preview renders a unified diff" {
+  let plan : MigrationPlan = {
+    old_package: "zxw-dev/example",
+    new_package: "zxw-dev/example",
+    actions: [
+      {
+        strategy: Automatic,
+        kind: "rename_function",
+        target: "fetch_user",
+        before: Some("get_user"),
+        after: Some("fetch_user"),
+        description: "rename",
+      },
+    ],
+  }
+  let preview = preview_source_migration(
+    [{ path: "src/main.mbt", content: "let user = get_user(1)\n", }],
+    plan,
+  )
+  assert_false(preview.is_empty())
+  let diff = preview.to_unified_diff()
+  assert_true(diff.contains("--- a/src/main.mbt"))
+  assert_true(diff.contains("-let user = get_user(1)"))
+  assert_true(diff.contains("+let user = fetch_user(1)"))
+}
