@@ -12,6 +12,14 @@ pub(all) enum DiffChange {
 }
 
 ///|
+/// Compatibility impact of a public API change.
+pub(all) enum CompatibilityLevel {
+  Breaking
+  NonBreaking
+  Unknown
+}
+
+///|
 /// The deterministic diff between two interface snapshots.
 pub(all) struct InterfaceDiff {
   old_package : String
@@ -373,49 +381,79 @@ pub fn DiffChange::kind(self : DiffChange) -> String {
 }
 
 ///|
+pub fn CompatibilityLevel::name(self : CompatibilityLevel) -> String {
+  match self {
+    Breaking => "breaking"
+    NonBreaking => "non-breaking"
+    Unknown => "unknown"
+  }
+}
+
+///|
+pub fn DiffChange::compatibility(self : DiffChange) -> CompatibilityLevel {
+  match self {
+    FunctionAdded(_) | StructAdded(_) => NonBreaking
+    FunctionRemoved(_)
+    | FunctionModified(_, _)
+    | FunctionRenamed(_, _)
+    | StructRemoved(_)
+    | StructModified(_, _)
+    | StructRenamed(_, _) => Breaking
+  }
+}
+
+///|
 pub fn DiffChange::to_json(self : DiffChange) -> Json {
   match self {
     FunctionAdded(function) =>
       Json::object({
         "kind": Json::string("function_added"),
+        "compatibility": Json::string("non-breaking"),
         "function": function.to_json(),
       })
     FunctionRemoved(function) =>
       Json::object({
         "kind": Json::string("function_removed"),
+        "compatibility": Json::string("breaking"),
         "function": function.to_json(),
       })
     FunctionModified(old, new) =>
       Json::object({
         "kind": Json::string("function_modified"),
+        "compatibility": Json::string("breaking"),
         "old": old.to_json(),
         "new": new.to_json(),
       })
     FunctionRenamed(old_name, function) =>
       Json::object({
         "kind": Json::string("function_renamed"),
+        "compatibility": Json::string("breaking"),
         "old_name": Json::string(old_name),
         "new": function.to_json(),
       })
     StructAdded(struct_) =>
       Json::object({
         "kind": Json::string("struct_added"),
+        "compatibility": Json::string("non-breaking"),
         "struct": struct_.to_json(),
       })
     StructRemoved(struct_) =>
       Json::object({
         "kind": Json::string("struct_removed"),
+        "compatibility": Json::string("breaking"),
         "struct": struct_.to_json(),
       })
     StructModified(old, new) =>
       Json::object({
         "kind": Json::string("struct_modified"),
+        "compatibility": Json::string("breaking"),
         "old": old.to_json(),
         "new": new.to_json(),
       })
     StructRenamed(old_name, struct_) =>
       Json::object({
         "kind": Json::string("struct_renamed"),
+        "compatibility": Json::string("breaking"),
         "old_name": Json::string(old_name),
         "new": struct_.to_json(),
       })
@@ -424,22 +462,52 @@ pub fn DiffChange::to_json(self : DiffChange) -> Json {
 
 ///|
 pub fn DiffChange::to_markdown(self : DiffChange) -> String {
-  match self {
-    FunctionAdded(function) =>
-      "- Added function `\{function.signature_string()}`"
+  let description = match self {
+    FunctionAdded(function) => "Added function `\{function.signature_string()}`"
     FunctionRemoved(function) =>
-      "- Removed function `\{function.signature_string()}`"
+      "Removed function `\{function.signature_string()}`"
     FunctionModified(old, new) =>
-      "- Modified function `\{old.signature_string()}` to `\{new.signature_string()}`"
+      "Modified function `\{old.signature_string()}` to `\{new.signature_string()}`"
     FunctionRenamed(old_name, function) =>
-      "- Renamed function `\{old_name}` to `\{function.signature_string()}`"
-    StructAdded(struct_) => "- Added struct `\{struct_.summary_string()}`"
-    StructRemoved(struct_) => "- Removed struct `\{struct_.summary_string()}`"
+      "Renamed function `\{old_name}` to `\{function.signature_string()}`"
+    StructAdded(struct_) => "Added struct `\{struct_.summary_string()}`"
+    StructRemoved(struct_) => "Removed struct `\{struct_.summary_string()}`"
     StructModified(old, new) =>
-      "- Modified struct `\{old.summary_string()}` to `\{new.summary_string()}`"
+      "Modified struct `\{old.summary_string()}` to `\{new.summary_string()}`"
     StructRenamed(old_name, struct_) =>
-      "- Renamed struct `\{old_name}` to `\{struct_.summary_string()}`"
+      "Renamed struct `\{old_name}` to `\{struct_.summary_string()}`"
   }
+  "- [\{self.compatibility().name()}] \{description}"
+}
+
+///|
+fn count_compatibility(
+  changes : Array[DiffChange],
+  level : CompatibilityLevel,
+) -> Int32 {
+  changes
+  .filter(change => change.compatibility().name() == level.name())
+  .length()
+}
+
+///|
+pub fn InterfaceDiff::breaking_count(self : InterfaceDiff) -> Int32 {
+  count_compatibility(self.changes, Breaking)
+}
+
+///|
+pub fn InterfaceDiff::non_breaking_count(self : InterfaceDiff) -> Int32 {
+  count_compatibility(self.changes, NonBreaking)
+}
+
+///|
+pub fn InterfaceDiff::unknown_count(self : InterfaceDiff) -> Int32 {
+  count_compatibility(self.changes, Unknown)
+}
+
+///|
+pub fn InterfaceDiff::has_breaking_changes(self : InterfaceDiff) -> Bool {
+  self.breaking_count() > 0
 }
 
 ///|
@@ -447,6 +515,12 @@ pub fn InterfaceDiff::to_json(self : InterfaceDiff) -> Json {
   Json::object({
     "old_package": Json::string(self.old_package),
     "new_package": Json::string(self.new_package),
+    "summary": Json::object({
+      "breaking": Json::number(self.breaking_count().to_double()),
+      "non_breaking": Json::number(self.non_breaking_count().to_double()),
+      "unknown": Json::number(self.unknown_count().to_double()),
+      "has_breaking": Json::boolean(self.has_breaking_changes()),
+    }),
     "changes": Json::array(self.changes.map(change => change.to_json())),
   })
 }
@@ -464,6 +538,9 @@ pub fn InterfaceDiff::to_markdown(self : InterfaceDiff) -> String {
     "- Old package: `\{self.old_package}`",
     "- New package: `\{self.new_package}`",
     "- Changes: \{self.changes.length()}",
+    "- Breaking changes: \{self.breaking_count()}",
+    "- Non-breaking changes: \{self.non_breaking_count()}",
+    "- Unknown changes: \{self.unknown_count()}",
     "",
   ]
   if self.changes.is_empty() {

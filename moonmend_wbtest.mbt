@@ -127,6 +127,12 @@ test "diff snapshots classify additions removals modifications and renames" {
   assert_eq(
     kinds, "function_modified,function_renamed,function_removed,function_added,struct_modified",
   )
+  assert_eq(diff.breaking_count(), 4)
+  assert_eq(diff.non_breaking_count(), 1)
+  assert_eq(diff.unknown_count(), 0)
+  assert_true(diff.has_breaking_changes())
+  assert_true(diff.to_json_string().contains("\"has_breaking\": true"))
+  assert_true(diff.to_markdown().contains("[breaking]"))
   assert_true(diff.to_json_string().contains("\"function_renamed\""))
   assert_true(diff.to_markdown().contains("Renamed function `get_user`"))
 }
@@ -147,7 +153,10 @@ test "diff snapshots are deterministic when there are no changes" {
     "# MoonMend Interface Diff\n\n" +
     "- Old package: `zxw-dev/example`\n" +
     "- New package: `zxw-dev/example`\n" +
-    "- Changes: 0\n\n" +
+    "- Changes: 0\n" +
+    "- Breaking changes: 0\n" +
+    "- Non-breaking changes: 0\n" +
+    "- Unknown changes: 0\n\n" +
     "No public API changes detected.",
   )
 }

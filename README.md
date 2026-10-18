@@ -84,6 +84,12 @@ Output JSON instead:
 moon run cmd/main -- diff fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --format json
 ```
 
+Fail the command when a breaking API change is detected:
+
+```powershell
+moon run cmd/main -- diff fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --fail-on-breaking
+```
+
 Write the report to a file:
 
 ```powershell

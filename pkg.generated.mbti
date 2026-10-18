@@ -50,6 +50,13 @@ pub(all) struct ApiStruct {
 pub fn ApiStruct::summary_string(Self) -> String
 pub fn ApiStruct::to_json(Self) -> Json
 
+pub(all) enum CompatibilityLevel {
+  Breaking
+  NonBreaking
+  Unknown
+}
+pub fn CompatibilityLevel::name(Self) -> String
+
 pub(all) enum DiffChange {
   FunctionAdded(ApiFunction)
   FunctionRemoved(ApiFunction)
@@ -60,6 +67,7 @@ pub(all) enum DiffChange {
   StructModified(ApiStruct, ApiStruct)
   StructRenamed(String, ApiStruct)
 }
+pub fn DiffChange::compatibility(Self) -> CompatibilityLevel
 pub fn DiffChange::kind(Self) -> String
 pub fn DiffChange::to_json(Self) -> Json
 pub fn DiffChange::to_markdown(Self) -> String
@@ -75,9 +83,13 @@ pub(all) struct InterfaceDiff {
   new_package : String
   changes : Array[DiffChange]
 }
+pub fn InterfaceDiff::breaking_count(Self) -> Int
+pub fn InterfaceDiff::has_breaking_changes(Self) -> Bool
+pub fn InterfaceDiff::non_breaking_count(Self) -> Int
 pub fn InterfaceDiff::to_json(Self) -> Json
 pub fn InterfaceDiff::to_json_string(Self) -> String
 pub fn InterfaceDiff::to_markdown(Self) -> String
+pub fn InterfaceDiff::unknown_count(Self) -> Int
 
 pub(all) struct InterfaceSnapshot {
   package_name : String

@@ -3,8 +3,8 @@ fn print_usage() -> Unit {
   println(
     "MoonMend - MoonBit API migration and safe upgrade assistant\n\n" +
     "Usage:\n" +
-    "  moonmend diff <old.mbti> <new.mbti> [--format markdown|json] [--output <path>]\n" +
-    "  moonmend plan <old.mbti> <new.mbti> [--format markdown|json|diff] [--output <path>]\n" +
+    "  moonmend diff <old.mbti> <new.mbti> [--format markdown|json] [--output <path>] [--fail-on-breaking]\n" +
+    "  moonmend plan <old.mbti> <new.mbti> [--format markdown|json|diff] [--output <path>] [--fail-on-breaking]\n" +
     "  moonmend migrate <project> <old.mbti> <new.mbti> [--apply] [--output <patch>]\n",
   )
 }
@@ -29,6 +29,18 @@ fn has_flag(args : Array[String], name : String) -> Bool {
     }
   }
   false
+}
+
+///|
+fn enforce_compatibility_gate(
+  diff : @lib.InterfaceDiff,
+  args : Array[String],
+) -> Result[Unit, String] {
+  if has_flag(args, "--fail-on-breaking") && diff.has_breaking_changes() {
+    Err("\{diff.breaking_count()} breaking API change(s) detected")
+  } else {
+    Ok(())
+  }
 }
 
 ///|
@@ -290,9 +302,13 @@ fn run_diff(args : Array[String]) -> Result[Unit, String] {
   match option_value(args, "--output") {
     None => {
       println(report)
-      Ok(())
+      enforce_compatibility_gate(diff, args)
     }
-    Some(path) => write_report(path, report)
+    Some(path) =>
+      match write_report(path, report) {
+        Ok(_) => enforce_compatibility_gate(diff, args)
+        Err(message) => Err(message)
+      }
   }
 }
 
@@ -313,7 +329,8 @@ fn run_plan(args : Array[String]) -> Result[Unit, String] {
     None => "markdown"
     Some(format) => format
   }
-  let plan = @lib.diff_interfaces(old, new) |> @lib.plan_migration
+  let diff = @lib.diff_interfaces(old, new)
+  let plan = diff |> @lib.plan_migration
   let report = match format {
     "markdown" => plan.to_markdown()
     "json" => plan.to_json_string()
@@ -326,9 +343,13 @@ fn run_plan(args : Array[String]) -> Result[Unit, String] {
   match option_value(args, "--output") {
     None => {
       println(report)
-      Ok(())
+      enforce_compatibility_gate(diff, args)
     }
-    Some(path) => write_report(path, report)
+    Some(path) =>
+      match write_report(path, report) {
+        Ok(_) => enforce_compatibility_gate(diff, args)
+        Err(message) => Err(message)
+      }
   }
 }
 
