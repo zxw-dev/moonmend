@@ -88,6 +88,19 @@ Write the report to a file:
 moon run cmd/main -- diff fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --output report.md
 ```
 
+Generate a dry-run migration plan:
+
+```powershell
+moon run cmd/main -- plan fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti
+```
+
+Generate plan JSON or a unified diff preview:
+
+```powershell
+moon run cmd/main -- plan fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --format json
+moon run cmd/main -- plan fixtures/v1/pkg.generated.mbti fixtures/v2/pkg.generated.mbti --format diff
+```
+
 Run tests:
 
 ```powershell

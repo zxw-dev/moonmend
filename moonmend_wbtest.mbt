@@ -172,3 +172,54 @@ test "ambiguous rename candidates remain added and removed" {
   let kinds = diff.changes.map(change => change.kind()).join(",")
   assert_eq(kinds, "function_removed,function_added")
 }
+
+///|
+test "migration plan assigns strategies and renders dry run" {
+  let old_source =
+    #|package "zxw-dev/example"
+    #|pub fn get_user(id : Int) -> User?
+    #|pub fn remove_user(id : Int) -> Unit
+    #|pub struct User {
+    #|  name : String
+    #|}
+  let new_source =
+    #|package "zxw-dev/example"
+    #|pub fn fetch_user(id : Int) -> User?
+    #|pub fn create_user(name : String) -> User
+    #|pub struct User {
+    #|  name : String
+    #|  active : Bool
+    #|}
+  let old = parse_interface(old_source)
+  let new = parse_interface(new_source)
+  guard old is Ok(old_snapshot) else { fail("old snapshot is invalid") }
+  guard new is Ok(new_snapshot) else { fail("new snapshot is invalid") }
+  let plan = diff_interfaces(old_snapshot, new_snapshot) |> plan_migration
+  assert_eq(plan.actions.length(), 4)
+  let strategies = plan.actions.map(action => action.strategy.name()).join(",")
+  assert_eq(strategies, "automatic,manual,informational,manual")
+  assert_true(plan.to_json_string().contains("\"strategy\": \"automatic\""))
+  assert_true(plan.to_markdown().contains("## automatic (1)"))
+  assert_true(plan.to_unified_diff().contains("-get_user"))
+  assert_true(plan.to_unified_diff().contains("+fetch_user"))
+}
+
+///|
+test "migration plan reports no automatic changes" {
+  let old_source =
+    #|package "zxw-dev/example"
+    #|pub fn old_api() -> Unit
+  let new_source =
+    #|package "zxw-dev/example"
+    #|pub fn completely_new() -> Unit
+  let old = match parse_interface(old_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let new = match parse_interface(new_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let plan = plan_migration(diff_interfaces(old, new))
+  assert_eq(plan.to_unified_diff(), "# No automatic changes to preview.")
+}

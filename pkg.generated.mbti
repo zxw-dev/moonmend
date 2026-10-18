@@ -6,6 +6,8 @@ pub fn diff_interfaces(InterfaceSnapshot, InterfaceSnapshot) -> InterfaceDiff
 
 pub fn parse_interface(String) -> Result[InterfaceSnapshot, String]
 
+pub fn plan_migration(InterfaceDiff) -> MigrationPlan
+
 pub fn product_name() -> String
 
 // Errors
@@ -73,6 +75,33 @@ pub(all) struct InterfaceSnapshot {
 }
 pub fn InterfaceSnapshot::to_json(Self) -> Json
 pub fn InterfaceSnapshot::to_json_string(Self) -> String
+
+pub(all) struct MigrationAction {
+  strategy : MigrationStrategy
+  kind : String
+  target : String
+  before : String?
+  after : String?
+  description : String
+}
+pub fn MigrationAction::to_json(Self) -> Json
+
+pub(all) struct MigrationPlan {
+  old_package : String
+  new_package : String
+  actions : Array[MigrationAction]
+}
+pub fn MigrationPlan::to_json(Self) -> Json
+pub fn MigrationPlan::to_json_string(Self) -> String
+pub fn MigrationPlan::to_markdown(Self) -> String
+pub fn MigrationPlan::to_unified_diff(Self) -> String
+
+pub(all) enum MigrationStrategy {
+  Automatic
+  Manual
+  Informational
+}
+pub fn MigrationStrategy::name(Self) -> String
 
 // Type aliases
 

@@ -3,7 +3,8 @@ fn print_usage() -> Unit {
   println(
     "MoonMend - MoonBit API migration and safe upgrade assistant\n\n" +
     "Usage:\n" +
-    "  moonmend diff <old.mbti> <new.mbti> [--format markdown|json] [--output <path>]\n",
+    "  moonmend diff <old.mbti> <new.mbti> [--format markdown|json] [--output <path>]\n" +
+    "  moonmend plan <old.mbti> <new.mbti> [--format markdown|json|diff] [--output <path>]\n",
   )
 }
 
@@ -73,12 +74,49 @@ fn run_diff(args : Array[String]) -> Result[Unit, String] {
 }
 
 ///|
+fn run_plan(args : Array[String]) -> Result[Unit, String] {
+  if args.length() < 4 {
+    return Err("plan requires <old.mbti> and <new.mbti>")
+  }
+  let old = match load_snapshot(args[2]) {
+    Ok(snapshot) => snapshot
+    Err(message) => return Err(message)
+  }
+  let new = match load_snapshot(args[3]) {
+    Ok(snapshot) => snapshot
+    Err(message) => return Err(message)
+  }
+  let format = match option_value(args, "--format") {
+    None => "markdown"
+    Some(format) => format
+  }
+  let plan = @lib.diff_interfaces(old, new) |> @lib.plan_migration
+  let report = match format {
+    "markdown" => plan.to_markdown()
+    "json" => plan.to_json_string()
+    "diff" => plan.to_unified_diff()
+    _ =>
+      return Err(
+        "unsupported format \{format}; expected markdown, json, or diff",
+      )
+  }
+  match option_value(args, "--output") {
+    None => {
+      println(report)
+      Ok(())
+    }
+    Some(path) => write_report(path, report)
+  }
+}
+
+///|
 fn run(args : Array[String]) -> Result[Unit, String] {
   if args.length() < 2 {
     return Err("missing command")
   }
   match args[1] {
     "diff" => run_diff(args)
+    "plan" => run_plan(args)
     "help" | "--help" | "-h" => {
       print_usage()
       Ok(())
