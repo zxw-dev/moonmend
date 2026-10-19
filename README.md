@@ -10,17 +10,22 @@ applied safely.
 
 ## Status
 
-The project is under active development for the MoonBit October 2026
-Hackathon. The initial scaffold provides a MoonBit library package, an
-executable CLI package, and tests.
+MoonMend `v0.1.0` is a working MVP for the MoonBit October 2026 Hackathon.
+It provides a MoonBit library, a native CLI, automated tests, migration
+rollback, and GitHub Actions CI.
 
-## Planned MVP
+## Implemented Capabilities
 
-- Read and normalize two versions of generated `.mbti` interfaces.
-- Classify added, removed, renamed, moved, and signature changes.
-- Generate JSON and Markdown migration reports.
-- Produce reviewable diffs for high-confidence migrations.
-- Validate applied migrations with `moon check` and `moon test`.
+- Read and normalize generated `.mbti` interfaces.
+- Classify added, removed, modified, and renamed declarations.
+- Report `breaking`, `non-breaking`, and `unknown` compatibility levels.
+- Generate JSON and Markdown diff reports.
+- Generate deterministic migration plans.
+- Preview real unified source diffs.
+- Apply automatic identifier renames.
+- Run `moon check` and `moon test` after migration.
+- Restore original files when verification fails.
+- Preserve unsupported public declarations in the snapshot output.
 
 ## Interface Parser
 
@@ -70,12 +75,22 @@ additions.
 - [`moonbitlang/async`](https://github.com/moonbitlang/async), Apache-2.0, used
   to run `moon check` and `moon test` during migration verification.
 
-## Development
+## Installation
 
 Requirements:
 
 - MoonBit toolchain
 - Git
+
+```powershell
+git clone https://github.com/zxw-dev/moonmend.git
+cd moonmend
+moon update
+moon check
+moon test
+```
+
+## Development
 
 Run the executable:
 
@@ -143,6 +158,26 @@ moon fmt
 moon info
 ```
 
+## Limitations
+
+- Automatic migration currently handles deterministic function and struct
+  renames. Signature, enum, trait, alias, constant, and impl changes require
+  manual review.
+- Source rewriting is token-aware but not AST-based. It skips strings, chars,
+  and line comments, but does not resolve same-named identifiers through full
+  MoonBit name resolution.
+- Module moves, visibility changes, and import-path rewrites are not automatic.
+- Trait, enum, alias, constant, and impl declarations are normalized as stable
+  interface signatures for diffing rather than fully decomposed semantic ASTs.
+- Rollback restores file contents; it does not undo unrelated user changes made
+  concurrently in the same files.
+
+## AI Use
+
+AI tools may assist with implementation, tests, and documentation. MoonMend's
+runtime behavior is deterministic and does not call a model. The participant
+must review the parser scope, migration rules, tests, and security boundaries.
+
 ## Repository Layout
 
 ```text
@@ -150,6 +185,10 @@ cmd/main/          CLI executable
 moonmend.mbt       Library entry point
 *_test.mbt         Blackbox tests
 *_wbtest.mbt       Whitebox tests
+fixtures/          Interface, migration, and rollback examples
+scripts/           CLI smoke tests
+docs/              Reproducible demo instructions
+.github/workflows/ CI
 PROPOSAL.md        Hackathon project proposal
 ```
 

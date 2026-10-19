@@ -6,7 +6,7 @@ MoonMend（月补）
 
 ## 2. 项目简介
 
-MoonMend 是一个面向 MoonBit 生态的开发者工具。它比较同一软件包两个版本生成的 `.mbti` 公共接口，识别新增、删除、重命名、移动、签名变化和可见性变化，并生成可解释的迁移报告、机器可读结果与可审查的源码补丁。对于改名或移动等高置信度变化，MoonMend 可以自动修改调用处并执行 `moon check` / `moon test` 验证；对于无法确定语义的变化，则保留给开发者人工处理，避免错误的自动迁移。
+MoonMend 是一个面向 MoonBit 生态的开发者工具。它比较同一软件包两个版本生成的 `.mbti` 公共接口，识别函数、结构体、枚举、trait、类型别名、常量和 impl 的新增、删除与修改，并给出 breaking/non-breaking 兼容性等级。MoonMend 可以生成 JSON、Markdown 和迁移计划，对高置信度函数或结构体重命名生成真实源码 diff；应用后可自动执行 `moon check` / `moon test`，验证失败时恢复原文件。
 
 ## 3. 项目方向与通用性
 
@@ -23,11 +23,11 @@ MoonMend 不绑定某个具体包，而是基于 MoonBit 的标准接口文件�
 ## 5. 拟实现的核心功能
 
 1. 读取并规范化两个版本的 `.mbti` 公共接口快照。
-2. 分类输出新增、删除、重命名、移动、签名变化和可见性变化。
-3. 基于确定性规则和相似度证据给出迁移建议及置信度。
-4. 对高置信度变化生成统一 diff，支持预览、应用和失败回滚。
+2. 分类输出函数、结构体、枚举、trait、类型别名、常量和 impl 的变化。
+3. 基于确定性规则给出迁移动作和 breaking/non-breaking 等级。
+4. 对高置信度重命名生成真实统一 diff，支持预览、应用和失败回滚。
 5. 调用 `moon check` / `moon test` 验证迁移结果，并生成 JSON 与 Markdown 报告。
-6. 提供适合本地使用和 CI 集成的命令行接口。
+6. 提供 `diff`、`plan`、`migrate` 子命令和 `--fail-on-breaking` CI 门禁。
 
 ## 6. 项目性质与参考来源
 
@@ -35,7 +35,7 @@ MoonMend 不绑定某个具体包，而是基于 MoonBit 的标准接口文件�
 
 ## 7. 移植项目说明
 
-不适用。实现过程中如使用官方 [moonbitlang/parser](https://github.com/moonbitlang/parser) 或其他开源依赖，将在仓库中注明来源、版本和许可证并遵守其许可条件。
+不适用。项目使用 [moonbitlang/x](https://github.com/moonbitlang/x) 和 [moonbitlang/async](https://github.com/moonbitlang/async)，二者均为 Apache-2.0；具体用途已在 README 中说明。
 
 ## 8. GitHub 仓库
 
