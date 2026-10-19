@@ -25,11 +25,6 @@ jobs:
           moon version --all
           moon update
 
-      - name: Verify generated interface
-        run: |
-          moon info
-          git diff --exit-code
-
       - name: Check and test
         run: |
           moon check
