@@ -1,5 +1,7 @@
 # MoonMend
 
+[![CI](https://github.com/zxw-dev/moonmend/actions/workflows/ci.yml/badge.svg)](https://github.com/zxw-dev/moonmend/actions/workflows/ci.yml)
+
 MoonMend is a MoonBit API migration and safe upgrade assistant.
 
 It compares the public interfaces of two package versions, reports breaking
@@ -123,6 +125,12 @@ Run tests:
 
 ```powershell
 moon test
+```
+
+Run the CLI smoke suite locally with Bash:
+
+```bash
+bash scripts/ci-smoke.sh
 ```
 
 Format and update generated interfaces:
