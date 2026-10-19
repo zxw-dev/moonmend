@@ -189,7 +189,6 @@ fixtures/          Interface, migration, and rollback examples
 scripts/           CLI smoke tests
 docs/              Reproducible demo instructions
 .github/workflows/ CI
-PROPOSAL.md        Hackathon project proposal
 ```
 
 ## License
