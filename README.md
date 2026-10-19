@@ -29,11 +29,12 @@ The first parser iteration handles generated interfaces containing:
 - package declarations
 - public functions and parameters
 - public structs and fields
+- enums, traits, type aliases, constants, and impls
 - nested generic types
 
 It produces a normalized `InterfaceSnapshot` with deterministic JSON output.
-Unsupported public declarations fail explicitly instead of being silently
-ignored.
+Unsupported public declarations are preserved in the snapshot's `unsupported`
+list instead of being silently ignored.
 
 ```moonbit
 let snapshot = parse_interface(source)
@@ -44,6 +45,8 @@ match snapshot {
 ```
 
 Example inputs are available under `fixtures/v1` and `fixtures/v2`.
+Extended declaration examples are in `fixtures/extended-v1.mbti` and
+`fixtures/extended-v2.mbti`.
 
 ## Interface Diff
 

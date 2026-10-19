@@ -58,7 +58,8 @@ test "parse interface snapshot" {
     "        ]\n" +
     "      }\n" +
     "    }\n" +
-    "  ]\n" +
+    "  ],\n" +
+    "  \"unsupported\": []\n" +
     "}",
   )
 }
@@ -289,4 +290,75 @@ test "source migration preview renders a unified diff" {
   assert_true(diff.contains("--- a/src/main.mbt"))
   assert_true(diff.contains("-let user = get_user(1)"))
   assert_true(diff.contains("+let user = fetch_user(1)"))
+}
+
+///|
+test "parse extended declarations and report unsupported entries" {
+  let source =
+    #|package "zxw-dev/extended"
+    #|pub(all) enum Color {
+    #|  Red
+    #|  Blue
+    #|}
+    #|pub(open) trait Render {
+    #|  fn render() -> String
+    #|}
+    #|pub type UserId = Int
+    #|pub const LIMIT : Int = 10
+    #|pub impl Render for User
+    #|pub suberror UnknownError
+  let result = parse_interface(source)
+  guard result is Ok(snapshot) else {
+    fail("expected extended interface to parse")
+  }
+  let kinds = snapshot.declarations
+    .map(fn(declaration) {
+      match declaration {
+        Enum(_) => "enum"
+        Trait(_) => "trait"
+        TypeAlias(_) => "type_alias"
+        Const(_) => "const"
+        Impl(_) => "impl"
+        Function(_) => "function"
+        Struct(_) => "struct"
+      }
+    })
+    .join(",")
+  assert_eq(kinds, "enum,trait,type_alias,const,impl")
+  assert_eq(snapshot.unsupported.length(), 1)
+  assert_true(snapshot.unsupported[0].text.contains("suberror"))
+}
+
+///|
+test "diff extended declarations" {
+  let old_source =
+    #|package "zxw-dev/extended"
+    #|pub enum Color {
+    #|  Red
+    #|}
+    #|pub type UserId = Int
+    #|pub const LIMIT : Int = 10
+  let new_source =
+    #|package "zxw-dev/extended"
+    #|pub enum Color {
+    #|  Red
+    #|  Blue
+    #|}
+    #|pub type UserId = UInt
+    #|pub const LIMIT : Int = 20
+  let old = match parse_interface(old_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let new = match parse_interface(new_source) {
+    Ok(snapshot) => snapshot
+    Err(message) => abort(message)
+  }
+  let diff = diff_interfaces(old, new)
+  let kinds = diff.changes.map(change => change.kind()).join(",")
+  assert_eq(
+    kinds, "named_declaration_modified,named_declaration_modified,named_declaration_modified",
+  )
+  assert_eq(diff.breaking_count(), 3)
+  assert_true(diff.to_markdown().contains("Modified enum `Color`"))
 }

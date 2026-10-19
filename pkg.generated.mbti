@@ -20,6 +20,11 @@ pub fn replace_identifiers(String, Array[MigrationAction]) -> String
 pub(all) enum ApiDeclaration {
   Function(ApiFunction)
   Struct(ApiStruct)
+  Enum(ApiNamedDeclaration)
+  Trait(ApiNamedDeclaration)
+  TypeAlias(ApiNamedDeclaration)
+  Const(ApiNamedDeclaration)
+  Impl(ApiNamedDeclaration)
 }
 pub fn ApiDeclaration::to_json(Self) -> Json
 
@@ -36,6 +41,13 @@ pub(all) struct ApiFunction {
 }
 pub fn ApiFunction::signature_string(Self) -> String
 pub fn ApiFunction::to_json(Self) -> Json
+
+pub(all) struct ApiNamedDeclaration {
+  kind : String
+  name : String
+  signature : String
+}
+pub fn ApiNamedDeclaration::to_json(Self) -> Json
 
 pub(all) struct ApiParameter {
   name : String?
@@ -66,6 +78,9 @@ pub(all) enum DiffChange {
   StructRemoved(ApiStruct)
   StructModified(ApiStruct, ApiStruct)
   StructRenamed(String, ApiStruct)
+  NamedAdded(ApiNamedDeclaration)
+  NamedRemoved(ApiNamedDeclaration)
+  NamedModified(ApiNamedDeclaration, ApiNamedDeclaration)
 }
 pub fn DiffChange::compatibility(Self) -> CompatibilityLevel
 pub fn DiffChange::kind(Self) -> String
@@ -94,6 +109,7 @@ pub fn InterfaceDiff::unknown_count(Self) -> Int
 pub(all) struct InterfaceSnapshot {
   package_name : String
   declarations : Array[ApiDeclaration]
+  unsupported : Array[UnsupportedDeclaration]
 }
 pub fn InterfaceSnapshot::to_json(Self) -> Json
 pub fn InterfaceSnapshot::to_json_string(Self) -> String
@@ -135,6 +151,12 @@ pub(all) struct SourceFile {
   path : String
   content : String
 }
+
+pub(all) struct UnsupportedDeclaration {
+  line : Int
+  text : String
+}
+pub fn UnsupportedDeclaration::to_json(Self) -> Json
 
 // Type aliases
 

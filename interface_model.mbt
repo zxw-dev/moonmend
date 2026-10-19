@@ -28,10 +28,30 @@ pub(all) struct ApiStruct {
 }
 
 ///|
+/// A named public declaration represented by its normalized interface text.
+pub(all) struct ApiNamedDeclaration {
+  kind : String
+  name : String
+  signature : String
+}
+
+///|
+/// A public declaration that the current parser cannot model yet.
+pub(all) struct UnsupportedDeclaration {
+  line : Int32
+  text : String
+}
+
+///|
 /// A declaration that affects the public API.
 pub(all) enum ApiDeclaration {
   Function(ApiFunction)
   Struct(ApiStruct)
+  Enum(ApiNamedDeclaration)
+  Trait(ApiNamedDeclaration)
+  TypeAlias(ApiNamedDeclaration)
+  Const(ApiNamedDeclaration)
+  Impl(ApiNamedDeclaration)
 }
 
 ///|
@@ -39,6 +59,7 @@ pub(all) enum ApiDeclaration {
 pub(all) struct InterfaceSnapshot {
   package_name : String
   declarations : Array[ApiDeclaration]
+  unsupported : Array[UnsupportedDeclaration]
 }
 
 ///|
@@ -85,6 +106,22 @@ pub fn ApiStruct::to_json(self : ApiStruct) -> Json {
 }
 
 ///|
+pub fn ApiNamedDeclaration::to_json(self : ApiNamedDeclaration) -> Json {
+  Json::object({
+    "name": Json::string(self.name),
+    "signature": Json::string(self.signature),
+  })
+}
+
+///|
+pub fn UnsupportedDeclaration::to_json(self : UnsupportedDeclaration) -> Json {
+  Json::object({
+    "line": Json::number(self.line.to_double()),
+    "text": Json::string(self.text),
+  })
+}
+
+///|
 pub fn ApiDeclaration::to_json(self : ApiDeclaration) -> Json {
   match self {
     Function(function) =>
@@ -97,6 +134,31 @@ pub fn ApiDeclaration::to_json(self : ApiDeclaration) -> Json {
         "kind": Json::string("struct"),
         "value": struct_.to_json(),
       })
+    Enum(declaration) =>
+      Json::object({
+        "kind": Json::string("enum"),
+        "value": declaration.to_json(),
+      })
+    Trait(declaration) =>
+      Json::object({
+        "kind": Json::string("trait"),
+        "value": declaration.to_json(),
+      })
+    TypeAlias(declaration) =>
+      Json::object({
+        "kind": Json::string("type_alias"),
+        "value": declaration.to_json(),
+      })
+    Const(declaration) =>
+      Json::object({
+        "kind": Json::string("const"),
+        "value": declaration.to_json(),
+      })
+    Impl(declaration) =>
+      Json::object({
+        "kind": Json::string("impl"),
+        "value": declaration.to_json(),
+      })
   }
 }
 
@@ -106,6 +168,9 @@ pub fn InterfaceSnapshot::to_json(self : InterfaceSnapshot) -> Json {
     "package_name": Json::string(self.package_name),
     "declarations": Json::array(
       self.declarations.map(declaration => declaration.to_json()),
+    ),
+    "unsupported": Json::array(
+      self.unsupported.map(declaration => declaration.to_json()),
     ),
   })
 }

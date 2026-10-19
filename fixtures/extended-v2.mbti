@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "zxw-dev/extended"
+
+// Values
+pub const LIMIT : Int = 20
+
+// Types and methods
+pub enum Color {
+  Red
+  Blue
+}
+
+pub(open) trait Render {
+  fn render() -> String
+}
+
+pub type UserId = UInt
+
+pub impl Render for User

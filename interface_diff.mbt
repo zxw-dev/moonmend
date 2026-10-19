@@ -9,6 +9,9 @@ pub(all) enum DiffChange {
   StructRemoved(ApiStruct)
   StructModified(ApiStruct, ApiStruct)
   StructRenamed(String, ApiStruct)
+  NamedAdded(ApiNamedDeclaration)
+  NamedRemoved(ApiNamedDeclaration)
+  NamedModified(ApiNamedDeclaration, ApiNamedDeclaration)
 }
 
 ///|
@@ -204,7 +207,7 @@ fn collect_functions(
   for declaration in declarations {
     match declaration {
       Function(function) => functions.push(function)
-      Struct(_) => ()
+      _ => ()
     }
   }
   functions
@@ -217,9 +220,28 @@ fn collect_structs(declarations : Array[ApiDeclaration]) -> Array[ApiStruct] {
     match declaration {
       Function(_) => ()
       Struct(struct_) => structs.push(struct_)
+      _ => ()
     }
   }
   structs
+}
+
+///|
+fn collect_named_declarations(
+  declarations : Array[ApiDeclaration],
+) -> Array[ApiNamedDeclaration] {
+  let named : Array[ApiNamedDeclaration] = []
+  for declaration in declarations {
+    match declaration {
+      Enum(value)
+      | Trait(value)
+      | TypeAlias(value)
+      | Const(value)
+      | Impl(value) => named.push(value)
+      Function(_) | Struct(_) => ()
+    }
+  }
+  named
 }
 
 ///|
@@ -233,8 +255,8 @@ fn diff_functions(
   let mut old_index = 0
   while old_index < old.length() {
     let mut new_index = 0
-    while new_index < new.length() && !new_matched[new_index] {
-      if old[old_index].name == new[new_index].name {
+    while new_index < new.length() {
+      if !new_matched[new_index] && old[old_index].name == new[new_index].name {
         old_matched[old_index] = true
         new_matched[new_index] = true
         if !function_signature_equal(old[old_index], new[new_index]) {
@@ -284,8 +306,8 @@ fn diff_structs(
   let mut old_index = 0
   while old_index < old.length() {
     let mut new_index = 0
-    while new_index < new.length() && !new_matched[new_index] {
-      if old[old_index].name == new[new_index].name {
+    while new_index < new.length() {
+      if !new_matched[new_index] && old[old_index].name == new[new_index].name {
         old_matched[old_index] = true
         new_matched[new_index] = true
         if !struct_shape_equal(old[old_index], new[new_index]) {
@@ -325,6 +347,50 @@ fn diff_structs(
 }
 
 ///|
+fn diff_named_declarations(
+  old : Array[ApiNamedDeclaration],
+  new : Array[ApiNamedDeclaration],
+  changes : Array[DiffChange],
+) -> Unit {
+  let old_matched = Array::make(old.length(), false)
+  let new_matched = Array::make(new.length(), false)
+  let mut old_index = 0
+  while old_index < old.length() {
+    let mut new_index = 0
+    while new_index < new.length() {
+      if !new_matched[new_index] &&
+        old[old_index].kind == new[new_index].kind &&
+        old[old_index].name == new[new_index].name {
+        old_matched[old_index] = true
+        new_matched[new_index] = true
+        if old[old_index].signature != new[new_index].signature {
+          changes.push(
+            DiffChange::NamedModified(old[old_index], new[new_index]),
+          )
+        }
+        break
+      }
+      new_index += 1
+    }
+    old_index += 1
+  }
+  old_index = 0
+  while old_index < old.length() {
+    if !old_matched[old_index] {
+      changes.push(DiffChange::NamedRemoved(old[old_index]))
+    }
+    old_index += 1
+  }
+  let mut new_index = 0
+  while new_index < new.length() {
+    if !new_matched[new_index] {
+      changes.push(DiffChange::NamedAdded(new[new_index]))
+    }
+    new_index += 1
+  }
+}
+
+///|
 /// Compare two normalized interface snapshots.
 pub fn diff_interfaces(
   old : InterfaceSnapshot,
@@ -339,6 +405,11 @@ pub fn diff_interfaces(
   diff_structs(
     collect_structs(old.declarations),
     collect_structs(new.declarations),
+    changes,
+  )
+  diff_named_declarations(
+    collect_named_declarations(old.declarations),
+    collect_named_declarations(new.declarations),
     changes,
   )
   { old_package: old.package_name, new_package: new.package_name, changes, }
@@ -377,6 +448,9 @@ pub fn DiffChange::kind(self : DiffChange) -> String {
     StructRemoved(_) => "struct_removed"
     StructModified(_, _) => "struct_modified"
     StructRenamed(_, _) => "struct_renamed"
+    NamedAdded(value) => "\{value.kind}_added"
+    NamedRemoved(value) => "\{value.kind}_removed"
+    NamedModified(_, _) => "named_declaration_modified"
   }
 }
 
@@ -392,13 +466,15 @@ pub fn CompatibilityLevel::name(self : CompatibilityLevel) -> String {
 ///|
 pub fn DiffChange::compatibility(self : DiffChange) -> CompatibilityLevel {
   match self {
-    FunctionAdded(_) | StructAdded(_) => NonBreaking
+    FunctionAdded(_) | StructAdded(_) | NamedAdded(_) => NonBreaking
     FunctionRemoved(_)
     | FunctionModified(_, _)
     | FunctionRenamed(_, _)
     | StructRemoved(_)
     | StructModified(_, _)
-    | StructRenamed(_, _) => Breaking
+    | StructRenamed(_, _)
+    | NamedRemoved(_)
+    | NamedModified(_, _) => Breaking
   }
 }
 
@@ -457,6 +533,25 @@ pub fn DiffChange::to_json(self : DiffChange) -> Json {
         "old_name": Json::string(old_name),
         "new": struct_.to_json(),
       })
+    NamedAdded(value) =>
+      Json::object({
+        "kind": Json::string("\{value.kind}_added"),
+        "compatibility": Json::string("non-breaking"),
+        "declaration": value.to_json(),
+      })
+    NamedRemoved(value) =>
+      Json::object({
+        "kind": Json::string("\{value.kind}_removed"),
+        "compatibility": Json::string("breaking"),
+        "declaration": value.to_json(),
+      })
+    NamedModified(old, new) =>
+      Json::object({
+        "kind": Json::string("\{old.kind}_modified"),
+        "compatibility": Json::string("breaking"),
+        "old": old.to_json(),
+        "new": new.to_json(),
+      })
   }
 }
 
@@ -476,6 +571,10 @@ pub fn DiffChange::to_markdown(self : DiffChange) -> String {
       "Modified struct `\{old.summary_string()}` to `\{new.summary_string()}`"
     StructRenamed(old_name, struct_) =>
       "Renamed struct `\{old_name}` to `\{struct_.summary_string()}`"
+    NamedAdded(value) => "Added \{value.kind} `\{value.name}`"
+    NamedRemoved(value) => "Removed \{value.kind} `\{value.name}`"
+    NamedModified(old, new) =>
+      "Modified \{old.kind} `\{old.name}` from `\{old.signature}` to `\{new.signature}`"
   }
   "- [\{self.compatibility().name()}] \{description}"
 }

@@ -129,6 +129,33 @@ fn action_from_change(change : DiffChange) -> MigrationAction {
         after: Some(struct_.summary_string()),
         description: "A new struct is available; no migration is required.",
       }
+    NamedAdded(value) =>
+      {
+        strategy: Informational,
+        kind: "new_\{value.kind}",
+        target: value.name,
+        before: None,
+        after: Some(value.signature),
+        description: "A new \{value.kind} declaration is available; no migration is required.",
+      }
+    NamedRemoved(value) =>
+      {
+        strategy: Manual,
+        kind: "review_removed_\{value.kind}",
+        target: value.name,
+        before: Some(value.signature),
+        after: None,
+        description: "The \{value.kind} declaration was removed; review affected uses.",
+      }
+    NamedModified(old, new) =>
+      {
+        strategy: Manual,
+        kind: "review_\{old.kind}",
+        target: new.name,
+        before: Some(old.signature),
+        after: Some(new.signature),
+        description: "The \{old.kind} declaration changed; review affected uses.",
+      }
   }
 }
 

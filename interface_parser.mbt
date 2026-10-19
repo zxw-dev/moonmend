@@ -174,15 +174,119 @@ fn parse_struct(
 }
 
 ///|
+fn declaration_rest(text : String) -> String {
+  if text.has_prefix("pub(all) ") {
+    text[9:].to_owned()
+  } else if text.has_prefix("pub(open) ") {
+    text[10:].to_owned()
+  } else if text.has_prefix("pub ") {
+    text[4:].to_owned()
+  } else {
+    text
+  }
+}
+
+///|
+fn declaration_name(text : String) -> String {
+  let mut index = 0
+  while index < text.length() {
+    match text.get_char(index) {
+      Some(char) =>
+        if char.is_ascii_whitespace() ||
+          char == '{' ||
+          char == '=' ||
+          char == ':' {
+          break
+        }
+      None => break
+    }
+    index += 1
+  }
+  text[:index].trim().to_owned()
+}
+
+///|
+fn parse_named_block(
+  lines : Array[StringView],
+  start : Int32,
+  text : String,
+  kind : String,
+) -> Result[(ApiNamedDeclaration, Int32), String] {
+  let rest = declaration_rest(text)
+  let keyword = kind + " "
+  if !rest.has_prefix(keyword) {
+    return Err("missing \{kind} keyword")
+  }
+  let tail = rest[keyword.length():].trim().to_owned()
+  let name = declaration_name(tail)
+  if name.is_empty() {
+    return Err("\{kind} name is empty")
+  }
+  let body : Array[String] = []
+  let mut depth = 1
+  let mut index = start + 1
+  while index < lines.length() {
+    let line = lines[index].trim().to_owned()
+    index += 1
+    if line.is_empty() || line.has_prefix("//") {
+      continue
+    }
+    let mut line_depth = depth
+    for char in line {
+      if char == '{' {
+        line_depth += 1
+      } else if char == '}' {
+        line_depth -= 1
+      }
+    }
+    if line_depth == 0 {
+      let signature = "\{kind} \{name} { \{body.join("; ")} }"
+      return Ok(({ kind, name, signature, }, index))
+    }
+    depth = line_depth
+    body.push(line)
+  }
+  Err("unterminated \{kind} \{name}")
+}
+
+///|
+fn parse_named_line(text : String) -> Result[ApiNamedDeclaration, String] {
+  let rest = declaration_rest(text)
+  let (kind, keyword) = if rest.has_prefix("type ") {
+    ("type_alias", "type ")
+  } else if rest.has_prefix("const ") {
+    ("const", "const ")
+  } else if rest.has_prefix("using ") {
+    ("using", "using ")
+  } else if rest.has_prefix("impl ") {
+    ("impl", "impl ")
+  } else {
+    return Err("unsupported named declaration")
+  }
+  let tail = rest[keyword.length():].trim().to_owned()
+  if tail.is_empty() {
+    return Err("\{kind} declaration is empty")
+  }
+  let name = if kind == "impl" { tail } else { declaration_name(tail) }
+  Ok({ kind, name, signature: rest, })
+}
+
+///|
+fn is_named_block(text : String, keyword : String) -> Bool {
+  let rest = declaration_rest(text)
+  rest.has_prefix(keyword + " ") && rest.contains("{")
+}
+
+///|
 /// Parse a generated `.mbti` interface into a normalized snapshot.
 ///
-/// This first version intentionally supports the declarations needed by the
-/// interface-diff MVP: package declarations, public functions, and public
-/// structs.
+/// Known declarations are normalized into stable public models. Unknown public
+/// declarations are retained in `unsupported` instead of aborting the parse.
 pub fn parse_interface(source : String) -> Result[InterfaceSnapshot, String] {
   let lines = source.split("\n").to_array()
   let mut package_name : String? = None
   let declarations : Array[ApiDeclaration] = []
+  let unsupported : Array[UnsupportedDeclaration] = []
   let mut index = 0
   while index < lines.length() {
     let text = lines[index].trim().to_owned()
@@ -224,15 +328,52 @@ pub fn parse_interface(source : String) -> Result[InterfaceSnapshot, String] {
       }
       continue
     }
+    if is_named_block(text, "enum") {
+      match parse_named_block(lines, index, text, "enum") {
+        Ok((declaration, next_index)) => {
+          declarations.push(ApiDeclaration::Enum(declaration))
+          index = next_index
+        }
+        Err(message) => return Err("line \{line_number}: \{message}")
+      }
+      continue
+    }
+    if is_named_block(text, "trait") {
+      match parse_named_block(lines, index, text, "trait") {
+        Ok((declaration, next_index)) => {
+          declarations.push(ApiDeclaration::Trait(declaration))
+          index = next_index
+        }
+        Err(message) => return Err("line \{line_number}: \{message}")
+      }
+      continue
+    }
+    let rest = declaration_rest(text)
+    if rest.has_prefix("type ") ||
+      rest.has_prefix("const ") ||
+      rest.has_prefix("using ") ||
+      rest.has_prefix("impl ") {
+      match parse_named_line(text) {
+        Ok(declaration) =>
+          match declaration.kind {
+            "type_alias" =>
+              declarations.push(ApiDeclaration::TypeAlias(declaration))
+            "const" => declarations.push(ApiDeclaration::Const(declaration))
+            "impl" => declarations.push(ApiDeclaration::Impl(declaration))
+            _ => unsupported.push({ line: line_number, text, })
+          }
+        Err(message) => return Err("line \{line_number}: \{message}")
+      }
+      index += 1
+      continue
+    }
     if text.has_prefix("pub ") || text.has_prefix("pub(") {
-      return Err(
-        "unsupported public declaration at line \{line_number}: \{text}",
-      )
+      unsupported.push({ line: line_number, text, })
     }
     index += 1
   }
   match package_name {
     None => Err("missing package declaration")
-    Some(package_name) => Ok({ package_name, declarations, })
+    Some(package_name) => Ok({ package_name, declarations, unsupported, })
   }
 }
